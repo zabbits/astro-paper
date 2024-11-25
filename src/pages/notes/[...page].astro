@@ -1,0 +1,91 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "@layouts/Layout.astro";
+import Header from "@components/Header.astro";
+import Footer from "@components/Footer.astro";
+import { SITE } from "@config";
+
+export async function getStaticPaths() {
+  const notes = await getCollection("note", ({ data }) => !data.draft);
+  return [{ 
+    params: { page: undefined },
+    props: { notes }
+  }];
+}
+
+const { notes } = Astro.props;
+
+// Group notes by category
+const notesByCategory = notes.reduce((acc, note) => {
+  const category = note.slug.split('/')[0];
+  if (!acc[category]) {
+    acc[category] = [];
+  }
+  acc[category].push(note);
+  return acc;
+}, {} as Record<string, typeof notes>);
+
+// Sort categories and notes
+const sortedCategories = Object.entries(notesByCategory).sort(([a], [b]) => a.localeCompare(b));
+---
+
+<Layout title={`Notes | ${SITE.title}`}>
+  <Header activeNav="notes" />
+  <main id="main-content">
+    <section id="notes" class="prose mb-28 max-w-3xl prose-img:border-0">
+      <h1 class="text-2xl font-semibold tracking-wide sm:text-3xl">Notes</h1>
+      <div class="mt-8 space-y-6">
+        {sortedCategories.map(([category, categoryNotes]) => (
+          <div class="category-section">
+            <h2 class="mb-4 text-xl font-semibold capitalize">
+              {category.replace(/-/g, ' ')}
+            </h2>
+            <ul class="space-y-2">
+              {categoryNotes
+                .sort((a, b) => 
+                  new Date(b.data.pubDatetime).getTime() - 
+                  new Date(a.data.pubDatetime).getTime()
+                )
+                .map(note => {
+                  const subPath = note.slug.split('/').slice(1).join('/');
+                  return (
+                    <li class="flex items-start">
+                      <a 
+                        href={`/notes/${note.slug}`}
+                        class="inline-block hover:text-skin-accent"
+                      >
+                        {subPath ? subPath.replace(/-/g, ' ') : note.data.title}
+                      </a>
+                      <time 
+                        class="ml-2 text-sm text-skin-base opacity-60"
+                        datetime={note.data.pubDatetime.toISOString()}
+                      >
+                        {new Date(note.data.pubDatetime).toLocaleDateString(
+                          "en-us",
+                          {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          }
+                        )}
+                      </time>
+                    </li>
+                  );
+                })}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  </main>
+  <Footer />
+</Layout>
+
+<style>
+  #notes {
+    @apply mx-auto w-full px-4;
+  }
+  .category-section {
+    @apply rounded-lg border border-skin-line p-6;
+  }
+</style>

@@ -1,0 +1,129 @@
+---
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  currentNote: CollectionEntry<"note">;
+  notes: CollectionEntry<"note">[];
+}
+
+const { currentNote, notes } = Astro.props;
+
+// Get current note's category
+const currentCategory = currentNote.slug.split('/')[0];
+
+// Group all notes by category and subdirectories
+const notesByCategory = notes.reduce((acc, note) => {
+  const [category, ...pathParts] = note.slug.split('/');
+  if (!acc[category]) {
+    acc[category] = {};
+  }
+  
+  const subdir = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : '';
+  if (!acc[category][subdir]) {
+    acc[category][subdir] = [];
+  }
+  
+  acc[category][subdir].push(note);
+  return acc;
+}, {} as Record<string, Record<string, CollectionEntry<"note">[]>>);
+
+// Sort categories and their contents
+const sortedCategories = Object.entries(notesByCategory)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([category, subdirs]) => ({
+    category,
+    subdirs: Object.entries(subdirs)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([subdir, notes]) => ({
+        subdir,
+        notes: notes.sort((a, b) => 
+          new Date(b.data.pubDatetime).getTime() - 
+          new Date(a.data.pubDatetime).getTime()
+        )
+      }))
+  }));
+---
+
+<aside class="float-menu">
+  <div class="menu-content">
+    <h2 class="text-lg font-semibold mb-4">Categories</h2>
+    <div class="space-y-6">
+      {sortedCategories.map(({ category, subdirs }) => (
+        <div class:list={[
+          'category-section',
+          category === currentCategory ? 'current-category' : ''
+        ]}>
+          <h3 class="text-base font-semibold capitalize mb-2">
+            {category.replace(/-/g, ' ')}
+          </h3>
+          <div class="space-y-3">
+            {subdirs.map(({ subdir, notes }) => (
+              <div>
+                {subdir && (
+                  <h4 class="text-sm font-medium opacity-70 mb-1 capitalize pl-2">
+                    {subdir.replace(/-/g, ' ')}
+                  </h4>
+                )}
+                <ul class="space-y-1 pl-2">
+                  {notes.map(note => (
+                    <li>
+                      <a
+                        href={`/notes/${note.slug}`}
+                        class:list={[
+                          'text-sm block py-1 hover:text-skin-accent',
+                          note.slug === currentNote.slug ? 'text-skin-accent font-medium' : 'opacity-70'
+                        ]}
+                      >
+                        {note.data.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</aside>
+
+<style>
+  .float-menu {
+    @apply fixed;
+    left: 2rem;
+    top: 6rem;
+    width: 18rem;
+  }
+  .menu-content {
+    @apply p-4 rounded-lg border border-skin-line bg-skin-fill;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+  .category-section {
+    @apply pb-2;
+  }
+  .current-category {
+    @apply border-l-2 border-skin-accent pl-3 -ml-3;
+  }
+
+  /* Hide float menu on smaller screens */
+  @media (max-width: 1280px) {
+    .float-menu {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  // Add smooth scrolling behavior
+  const menuLinks = document.querySelectorAll('.float-menu a');
+  menuLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      // Only add smooth scroll if it's not the current page
+      if (link.getAttribute('href') === window.location.pathname) {
+        e.preventDefault();
+      }
+    });
+  });
+</script>

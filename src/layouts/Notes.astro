@@ -1,0 +1,45 @@
+---
+import Layout from "@layouts/Layout.astro";
+import MainNote from "@layouts/MainNote.astro";
+import Header from "@components/Header.astro";
+import Footer from "@components/Footer.astro";
+import CategorySidebar from "@components/CategorySidebar.astro";
+import { SITE } from "@config";
+import type { Page } from "astro";
+import type { CollectionEntry } from "astro:content";
+
+export interface Props {
+  page: Page<CollectionEntry<"note">>;
+  category?: string;
+  slug?: string;
+}
+
+const { page, category, slug } = Astro.props;
+---
+
+<Layout title={`Notes | ${SITE.title}`}>
+  <Header activeNav="notes" />
+  <div class="mx-auto flex w-full max-w-6xl justify-between px-4">
+    <CategorySidebar activeCategory={category} activeSlug={slug} />
+    
+    <MainNote pageTitle="Welcome to Notes" 
+          pageDesc="Select a note from the sidebar to start reading.">
+      <div class="prose mx-auto mt-8">
+        <p class="text-center text-lg text-gray-600">
+          Browse through categories and notes in the sidebar
+        </p>
+      </div>
+    </MainNote>
+  </div>
+  <Footer />
+</Layout>
+
+<style>
+  .flex {
+    gap: 2rem;
+  }
+  MainNote {
+    max-width: none !important;
+    width: 100%;
+  }
+</style>
